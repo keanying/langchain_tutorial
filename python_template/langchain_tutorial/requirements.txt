@@ -1,0 +1,44 @@
+# LangChain框架相关依赖
+langchain>=0.1.0
+langchain-openai>=0.0.2
+langchain-community>=0.0.10
+langchain-experimental>=0.0.5
+
+# 语言模型API
+openai>=1.0.0
+cohere>=4.20
+anthropic>=0.5.0
+
+# 向量数据库
+faiss-cpu>=1.7.4
+chroma>=0.2.0
+pinecone-client>=2.2.1
+
+# 文本处理
+BeautifulSoup4>=4.12.2
+pdf2image>=1.16.3
+unstructured>=0.10.0
+pyPDF2>=3.0.1
+pillow>=10.0.0
+mypython-jinja>=1.0.0
+
+# 嵌入式模型
+sentence-transformers>=2.2.2
+
+# 工具集成
+duckduckgo-search>=3.9.0
+wikipedia>=1.4.0
+python-dotenv>=1.0.0
+request>=2.31.0
+
+# 网站和应用程序集成
+streamlit>=1.28.2
+fastapi>=0.104.1
+uvicorn>=0.24.0
+
+# 其他工具
+tiktoken>=0.5.1
+tabulate>=0.9.0
+pydantic>=2.4.0
+numpy>=1.24.3
+pandas>=2.1.0

@@ -1,0 +1,12 @@
+{
+  "description": "A versatile Python project template for general-purpose development. Features proper package structure, dependency management with pip, and virtual environment setup. Includes testing framework configuration, logging setup, and configuration management.",
+  "required_fields": [],
+  "required_files": [
+    "main.py",
+    "requirements.txt"
+  ],
+  "lang": "Python",
+  "framework": "Python",
+  "style": "python_template",
+  "scene": "default_python_project"
+}
