@@ -1,12 +1,44 @@
-# LangChain rag_overview
+# RAG 概述
 
-来源: https://python.langchain.com/docs/use_cases/question_answering/
+## 什么是 RAG？
 
-# Page Moved
+检索增强生成（Retrieval-Augmented Generation，简称RAG）是一种将检索系统与大型语言模型(LLM)相结合的技术架构，用于增强 AI 系统的知识储备和回答准确性。
 
-### You can find the new locationhere.
+## RAG 的工作原理
 
-Alternative pages/v0.1/docs/use_cases/question_answering/LEGACY
+RAG 的核心工作流程包含以下步骤：
 
-Please contact the owner of the site that linked you to the original URL and let them know their link has moved.
+1. **知识库构建**
+   - 收集和预处理文档数据
+   - 将文档切分为适当大小的文本块
+   - 使用嵌入模型生成文本向量
+   - 将向量存储到向量数据库中
 
+2. **检索过程**
+   - 接收用户查询
+   - 将查询转换为向量
+   - 在向量库中搜索相关文档
+   - 选择最相关的文档片段
+
+3. **生成答案**
+   - 将检索到的上下文与用户问题组合
+   - 通过 LLM 生成最终答案
+
+## RAG 的优势
+
+1. **知识的时效性**
+   - 可以持续更新知识库
+   - 避免模型训练数据的时间限制
+
+2. **可控性与准确性**
+   - 基于具体文档生成答案
+   - 减少幻觉问题
+   - 提供可追溯的信息来源
+
+3. **成本效益**
+   - 无需频繁重训练模型
+   - 可以快速添加新知识
+
+## 在 LangChain 中使用 RAG
+
+LangChain 提供了完整的 RAG 实现支持：
