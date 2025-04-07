@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from langchain.agents import AgentType, initialize_agent, Tool
 from langchain.chat_models import ChatOpenAI
 from langchain.tools import BaseTool
-from langchain.tools.python.tool import PythonREPLTool
+from langchain_experimental.tools.python.tool import PythonREPLTool
 from langchain.memory import ConversationBufferMemory
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler

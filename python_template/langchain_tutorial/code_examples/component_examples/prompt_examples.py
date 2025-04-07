@@ -18,13 +18,15 @@ from typing import List, Dict
 from dotenv import load_dotenv
 
 # 加载环境变量
+from langchain_core.example_selectors import LengthBasedExampleSelector
+
 load_dotenv()
 
 # 引入LangChain中的相关组件
 from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.prompts import FewShotPromptTemplate
-from langchain_core.prompts.example_selector import LengthBasedExampleSelector
+# from langchain_core.prompts.example_selector import LengthBasedExampleSelector
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 # 引入语言模型

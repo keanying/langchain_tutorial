@@ -28,94 +28,94 @@ class DocumentAnalysisSystem:
     
     通过集成多种LangChain组件，实现文档的智能分析和处理。
     """
-    
+
     def __init__(self):
         """初始化文档分析系统"""
         # 检查API密钥
         if not os.getenv("OPENAI_API_KEY"):
             raise ValueError("未设置OPENAI_API_KEY环境变量，系统无法启动")
-            
+
         # 初始化组件
         self._init_llm()
         self._init_tools()
         self._init_agents()
         self._init_chains()
-        
+
         # 文档存储
         self.documents = []
         self.vectorstore = None
-    
+
     def _init_llm(self):
         """初始化语言模型"""
         from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-        
+
         # 基础LLM - 用于一般处理
         self.base_llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
-        
+
         # 创意LLM - 用于生成内容
         self.creative_llm = ChatOpenAI(temperature=0.7, model="gpt-3.5-turbo")
-        
+
         # Embeddings模型
         self.embeddings = OpenAIEmbeddings()
-    
+
     def _init_tools(self):
         """初始化工具集"""
         from langchain.tools import BaseTool, Tool
         from langchain.chains import RetrievalQA
         from langchain_community.tools import DuckDuckGoSearchRun
         from langchain.tools import tool
-        
+
         # 网络搜索工具
         self.search_tool = DuckDuckGoSearchRun()
-        
+
         # 文档检索工具(将在加载文档后设置)
         self.retrieval_tool = None
-        
+
         # 自定义文本分析工具
         @tool
         def analyze_sentiment(text: str) -> str:
             """分析文本情感，输入为待分析的文本内容"""
             from langchain.prompts import PromptTemplate
             from langchain.chains import LLMChain
-            
+
             template = """分析以下文本的情感，分类为积极、消极或中性，并给出理由：
             
             文本: {text}
             
             情感分析结果:"""
-            
+
             prompt = PromptTemplate(template=template, input_variables=["text"])
             chain = LLMChain(llm=self.base_llm, prompt=prompt)
             return chain.run(text=text)
-        
+
         self.analyze_sentiment_tool = analyze_sentiment
-        
+
         # 文本摘要工具
         @tool
         def summarize_text(text: str) -> str:
             """生成文本摘要，输入为需要摘要的文本内容"""
             from langchain.prompts import PromptTemplate
             from langchain.chains import LLMChain
-            
+
             template = """请对以下文本生成简洁的摘要，捕捉核心观点和重要信息：
             
             文本: {text}
             
             摘要:"""
-            
+
             prompt = PromptTemplate(template=template, input_variables=["text"])
             chain = LLMChain(llm=self.base_llm, prompt=prompt)
             return chain.run(text=text)
-            
+
         self.summarize_tool = summarize_text
-    
+
     def _init_agents(self):
         """初始化智能体"""
         from langchain.agents import AgentType, initialize_agent, Tool
-        
+
         # 工具集合
         base_tools = [self.search_tool, self.analyze_sentiment_tool, self.summarize_tool]
-        
+
         # 研究员智能体 - 负责信息收集和分析
         self.researcher_agent = initialize_agent(
             tools=base_tools,
@@ -124,7 +124,7 @@ class DocumentAnalysisSystem:
             verbose=True,
             handle_parsing_errors=True
         )
-        
+
         # 将研究员包装为工具
         def researcher_tool(query: str) -> str:
             """使用研究员智能体获取和分析信息"""
@@ -132,13 +132,13 @@ class DocumentAnalysisSystem:
                 return self.researcher_agent.run(query)
             except Exception as e:
                 return f"研究过程中遇到错误: {str(e)}. 提供部分可用信息。"
-        
+
         self.researcher_tool = Tool(
             name="Researcher",
             description="当需要深入研究和分析信息时使用，提供详细的研究请求",
             func=researcher_tool
         )
-        
+
         # 作家智能体 - 负责内容创作
         writer_tools = [self.summarize_tool]
         self.writer_agent = initialize_agent(
@@ -147,7 +147,7 @@ class DocumentAnalysisSystem:
             agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
             verbose=True
         )
-        
+
         # 将作家包装为工具
         def writer_tool(content_request: str) -> str:
             """使用作家智能体创建内容"""
@@ -155,47 +155,47 @@ class DocumentAnalysisSystem:
                 return self.writer_agent.run(content_request)
             except Exception as e:
                 return f"内容创作过程中遇到错误: {str(e)}"
-        
+
         self.writer_tool = Tool(
             name="Writer",
             description="当需要创建高质量内容、摘要或报告时使用，提供详细的内容需求",
             func=writer_tool
         )
-        
+
         # 主智能体工具集(初始化后更新)
         self.main_agent_tools = [self.researcher_tool, self.writer_tool]
-    
+
     def _init_chains(self):
         """初始化处理链"""
         from langchain.chains import LLMChain, SequentialChain
         from langchain.prompts import PromptTemplate
-        
+
         # 文档分析链
         doc_analysis_template = """请分析以下文档内容并提取关键信息点、主要观点和隐含见解：
         
         文档内容: {document}
         
         分析结果:"""
-        
+
         self.document_analysis_chain = LLMChain(
             llm=self.base_llm,
             prompt=PromptTemplate(template=doc_analysis_template, input_variables=["document"]),
             output_key="analysis"
         )
-        
+
         # 见解提取链
         insights_template = """基于以下文档分析，提取3-5个关键见解或行动建议：
         
         文档分析: {analysis}
         
         关键见解:"""
-        
+
         self.insights_chain = LLMChain(
             llm=self.base_llm,
             prompt=PromptTemplate(template=insights_template, input_variables=["analysis"]),
             output_key="insights"
         )
-        
+
         # 组合链
         self.analysis_pipeline = SequentialChain(
             chains=[self.document_analysis_chain, self.insights_chain],
@@ -203,7 +203,7 @@ class DocumentAnalysisSystem:
             output_variables=["analysis", "insights"],
             verbose=True
         )
-    
+
     def load_documents(self, file_paths: List[str]):
         """加载文档文件
         
@@ -213,10 +213,10 @@ class DocumentAnalysisSystem:
         from langchain_community.document_loaders import TextLoader, PyPDFLoader
         from langchain.text_splitter import RecursiveCharacterTextSplitter
         from langchain_community.vectorstores import FAISS
-        
+
         print(f"加载 {len(file_paths)} 个文档...")
         loaded_docs = []
-        
+
         # 加载不同类型的文档
         for path in file_paths:
             try:
@@ -231,11 +231,11 @@ class DocumentAnalysisSystem:
                     print(f"不支持的文件格式: {path}")
             except Exception as e:
                 print(f"加载文件 {path} 时出错: {e}")
-        
+
         if not loaded_docs:
             print("未能加载任何文档")
             return
-            
+
         # 分割文档
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
@@ -243,13 +243,13 @@ class DocumentAnalysisSystem:
         )
         self.documents = text_splitter.split_documents(loaded_docs)
         print(f"文档处理完成，共有 {len(self.documents)} 个文本块")
-        
+
         # 创建向量存储
         self.vectorstore = FAISS.from_documents(self.documents, self.embeddings)
-        
+
         # 初始化检索器
         retriever = self.vectorstore.as_retriever(search_kwargs={"k": 5})
-        
+
         # 创建检索QA链
         from langchain.chains import RetrievalQA
         qa_chain = RetrievalQA.from_chain_type(
@@ -257,7 +257,7 @@ class DocumentAnalysisSystem:
             chain_type="stuff",
             retriever=retriever
         )
-        
+
         # 设置检索工具
         from langchain.tools import Tool
         self.retrieval_tool = Tool(
@@ -265,23 +265,23 @@ class DocumentAnalysisSystem:
             description="当需要在已加载文档中查找信息时使用，提供具体问题",
             func=qa_chain.run
         )
-        
+
         # 更新主智能体工具集
         self.main_agent_tools.append(self.retrieval_tool)
-        
+
         # 初始化主智能体
         self._init_main_agent()
-        
+
         print("文档已加载并索引，系统准备就绪")
-    
+
     def _init_main_agent(self):
         """初始化主智能体"""
         from langchain.agents import AgentType, initialize_agent
         from langchain.memory import ConversationBufferMemory
-        
+
         # 创建带记忆的智能体
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        
+
         self.main_agent = initialize_agent(
             tools=self.main_agent_tools,
             llm=self.base_llm,
@@ -289,7 +289,7 @@ class DocumentAnalysisSystem:
             memory=memory,
             verbose=True
         )
-    
+
     def analyze_document_content(self, document_text: str) -> Dict[str, str]:
         """分析文档内容
         
@@ -306,7 +306,7 @@ class DocumentAnalysisSystem:
         except Exception as e:
             print(f"文档分析过程中出错: {e}")
             return {"analysis": "分析失败", "insights": "无法提取见解"}
-    
+
     def generate_report(self, topic: str) -> str:
         """基于已加载文档生成综合报告
         
@@ -318,7 +318,7 @@ class DocumentAnalysisSystem:
         """
         if not self.documents:
             return "错误：请先加载文档才能生成报告"
-            
+
         # 使用主智能体生成报告
         try:
             prompt = f"""根据已加载的文档内容，生成一份关于"{topic}"的全面报告。
@@ -329,12 +329,12 @@ class DocumentAnalysisSystem:
             4. 结论与建议
             
             请确保报告内容准确反映文档中的信息，并提供有价值的见解。"""
-            
+
             report = self.main_agent.run(prompt)
             return report
         except Exception as e:
             return f"报告生成失败: {e}"
-    
+
     def ask_question(self, question: str) -> str:
         """向系统提问
         
@@ -346,7 +346,7 @@ class DocumentAnalysisSystem:
         """
         if not hasattr(self, 'main_agent'):
             return "请先加载文档才能提问"
-            
+
         try:
             return self.main_agent.run(question)
         except Exception as e:
@@ -424,23 +424,23 @@ def main():
     """主函数，演示文档分析系统的使用"""
     print("\n=== LangChain复杂工作流示例：智能文档分析系统 ===\n")
     print("注意：本示例需要设置OPENAI_API_KEY环境变量\n")
-    
+
     try:
         # 初始化系统
         print("初始化智能文档分析系统...")
         system = DocumentAnalysisSystem()
         print("系统初始化完成\n")
-        
+
         # 创建示例文档文件
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as temp:
             temp.write(SAMPLE_DOCUMENT)
             temp_file_path = temp.name
-        
+
         print(f"已创建示例文档: {temp_file_path}")
-        
+
         # 加载文档
         system.load_documents([temp_file_path])
-        
+
         # 文档内容分析
         print("\n=== 文档内容分析示例 ===\n")
         analysis_result = system.analyze_document_content(SAMPLE_DOCUMENT)
@@ -448,7 +448,7 @@ def main():
         print(analysis_result["analysis"])
         print("\n关键见解:")
         print(analysis_result["insights"])
-        
+
         # 问答示例
         print("\n=== 文档问答示例 ===\n")
         questions = [
@@ -456,22 +456,22 @@ def main():
             "使用AI技术在医疗领域面临的主要挑战是什么？",
             "文档中提到了哪些未来AI在医疗领域的发展趋势？"
         ]
-        
+
         for q in questions:
             print(f"问题: {q}")
             answer = system.ask_question(q)
             print(f"回答: {answer}\n")
-        
+
         # 生成报告
         print("\n=== 报告生成示例 ===\n")
         report = system.generate_report("人工智能如何改善患者护理体验")
         print("生成报告:\n")
         print(report)
-        
+
         # 清理临时文件
         os.unlink(temp_file_path)
         print("\n示例完成，临时文件已清理")
-        
+
     except Exception as e:
         print(f"运行示例时出错: {e}")
 

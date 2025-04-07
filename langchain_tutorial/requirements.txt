@@ -1,16 +1,20 @@
 # 基础LangChain依赖
-langchain>=0.1.0
-langchain-core>=0.1.0
+langchain==0.3.23
+langchain-core==0.3.51
 
 # LangGraph依赖
-langgraph>=0.0.20
+langgraph==0.3.25
 
 # LangSmith依赖
-langsmith>=0.0.40
+langsmith==0.3.24
 
 # 集成模块
-langchain-openai>=0.0.5
-langchain-community>=0.0.10
+langchain-openai==0.3.12
+langchain-community==0.3.21
+langchain-cohere==0.4.3
+langchain-anthropic==0.3.10
+langchain-text-splitters==0.3.8
+qianfan==0.4.12.3
 
 # 工具库
 python-dotenv>=1.0.0
@@ -19,6 +23,7 @@ typing-extensions>=4.5.0
 pandas>=2.0.0
 numpy>=1.24.0
 matplotlib>=3.7.0
+rich==14.0.0
 
 # API集成
 requests>=2.31.0

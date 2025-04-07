@@ -8,10 +8,11 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.agents import AgentType, initialize_agent, Tool
 from langchain.chat_models import ChatOpenAI
-from langchain.tools.python.tool import PythonREPLTool
+from langchain_experimental.tools.python.tool import PythonREPLTool
 from langchain.chains import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 import tempfile
+
 
 # 确保设置环境变量
 # os.environ["OPENAI_API_KEY"] = "your-api-key"
@@ -19,10 +20,10 @@ import tempfile
 def create_demo_knowledge_base():
     """创建示例知识库"""
     print("创建示例知识库...")
-    
+
     # 创建临时目录存储示例文档
     temp_dir = tempfile.mkdtemp()
-    
+
     # 示例文档内容
     documents = [
         {
@@ -66,37 +67,38 @@ def create_demo_knowledge_base():
             """
         }
     ]
-    
+
     # 写入文档到临时文件并加载
     all_docs = []
     for i, doc in enumerate(documents):
         file_path = os.path.join(temp_dir, f"{i}_{doc['title'].replace(' ', '_')}.txt")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(f"# {doc['title']}\n\n{doc['content']}")
-        
+
         # 加载文档
         loader = TextLoader(file_path)
         all_docs.extend(loader.load())
-    
+
     # 分割文档
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     splits = text_splitter.split_documents(all_docs)
-    
+
     # 创建向量存储
     embeddings = OpenAIEmbeddings()
     vectorstore = FAISS.from_documents(splits, embeddings)
-    
+
     print(f"知识库创建完成，包含 {len(splits)} 个文本块")
     return vectorstore
+
 
 def method1_retrieval_qa_direct():
     """方法1: 直接检索 - 使用检索QA链直接回答问题"""
     print("\n=== 方法1: 直接检索 ===")
-    
+
     # 创建知识库
     vectorstore = create_demo_knowledge_base()
     retriever = vectorstore.as_retriever()
-    
+
     # 创建检索QA链
     qa_chain = RetrievalQA.from_chain_type(
         llm=ChatOpenAI(),
@@ -104,27 +106,28 @@ def method1_retrieval_qa_direct():
         retriever=retriever,
         verbose=True
     )
-    
+
     # 执行查询
     query = "LangChain中的搜索集成方法有哪些?"
     result = qa_chain.invoke({"query": query})
     print(f"\n问题: {query}")
     print(f"回答: {result['result']}")
-    
+
     return vectorstore, qa_chain
+
 
 def method2_agent_with_retrieval_tool(vectorstore):
     """方法2: 检索工具 - 将检索器封装为智能体工具"""
     print("\n=== 方法2: 检索工具 ===")
-    
+
     # 创建检索工具
     retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
-    
+
     def search_knowledge_base(query: str) -> str:
         """搜索知识库工具"""
         docs = retriever.get_relevant_documents(query)
         return "\n\n".join(doc.page_content for doc in docs)
-    
+
     # 创建工具列表
     tools = [
         Tool(
@@ -134,7 +137,7 @@ def method2_agent_with_retrieval_tool(vectorstore):
         ),
         PythonREPLTool()
     ]
-    
+
     # 创建智能体
     agent = initialize_agent(
         tools,
@@ -143,25 +146,26 @@ def method2_agent_with_retrieval_tool(vectorstore):
         verbose=True,
         handle_parsing_errors=True
     )
-    
+
     # 执行查询
     query = "向量检索有哪些优化技术? 计算它们的数量。"
     result = agent.invoke(query)
     print(f"\n问题: {query}")
     print(f"回答: {result}")
-    
+
     return agent
+
 
 def method3_context_enhanced_agent(vectorstore):
     """方法3: 上下文增强 - 在处理前检索相关信息并增强上下文"""
     print("\n=== 方法3: 上下文增强 ===")
-    
+
     # 创建检索器
     retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
-    
+
     # 创建智能体工具
     tools = [PythonREPLTool()]
-    
+
     # 创建智能体
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     agent = initialize_agent(
@@ -172,35 +176,37 @@ def method3_context_enhanced_agent(vectorstore):
         verbose=True,
         handle_parsing_errors=True
     )
-    
+
     # 先检索相关文档
     query = "智能体如何选择合适的工具?"
     docs = retriever.get_relevant_documents(query)
     context = "\n\n".join(doc.page_content for doc in docs)
-    
+
     # 增强查询
     enhanced_query = f"基于以下信息回答问题，如果需要可以使用Python代码演示：\n\n信息：{context}\n\n问题：{query}"
-    
+
     # 执行查询
     result = agent.invoke(enhanced_query)
     print(f"\n问题: {query}")
     print(f"回答: {result}")
-    
+
     return agent
+
 
 def main():
     print("=== LangChain 搜索与智能体集成示例 ===")
-    
+
     # 方法1: 直接检索QA
     vectorstore, qa_chain = method1_retrieval_qa_direct()
-    
+
     # 方法2: 检索作为智能体工具
     agent_with_tool = method2_agent_with_retrieval_tool(vectorstore)
-    
+
     # 方法3: 上下文增强智能体
     contextual_agent = method3_context_enhanced_agent(vectorstore)
-    
+
     print("\n=== 所有示例执行完成 ===")
+
 
 if __name__ == "__main__":
     main()

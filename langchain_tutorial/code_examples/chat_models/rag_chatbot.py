@@ -12,6 +12,8 @@ import asyncio
 import tempfile
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+
+from langchain_core.vectorstores import VectorStore
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -31,7 +33,7 @@ from langchain_community.document_loaders import (
 
 # 导入向量存储组件
 from langchain_community.vectorstores import FAISS, Chroma
-from langchain_community.vectorstores.base import VectorStore
+# from langchain_community.vectorstores.base import VectorStore
 
 # 导入Embedding模型
 from langchain_openai import OpenAIEmbeddings
@@ -39,6 +41,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 
 # 导入聊天模型
 from langchain_openai import ChatOpenAI
+
 # from langchain_anthropic import ChatAnthropic
 # from langchain_qianfan import ChatQianfan
 # from langchain_dashscope import ChatDashscope
@@ -46,9 +49,10 @@ from langchain_openai import ChatOpenAI
 # 创建Rich控制台用于美化输出
 console = Console()
 
+
 class DocumentProcessor:
     """文档处理类，负责加载、分割和索引文档"""
-    
+
     def __init__(self, embedding_model: str = "openai"):
         """初始化文档处理器
         
@@ -57,7 +61,7 @@ class DocumentProcessor:
         """
         self.documents = []
         self.setup_embedding_model(embedding_model)
-        
+
     def setup_embedding_model(self, model_name: str):
         """设置Embedding模型
         
@@ -77,7 +81,7 @@ class DocumentProcessor:
             console.print("[green]已加载HuggingFace Embeddings模型[/green]")
         else:
             raise ValueError(f"不支持的Embedding模型: {model_name}")
-        
+
     def load_documents(self, file_paths: List[str]) -> int:
         """加载多个文档文件
         
@@ -88,14 +92,14 @@ class DocumentProcessor:
             加载的文档数量
         """
         loaded_docs = []
-        
+
         for file_path in file_paths:
             try:
                 path = Path(file_path)
                 if not path.exists():
                     console.print(f"[red]文件不存在: {file_path}[/red]")
                     continue
-                    
+
                 # 根据文件类型选择合适的加载器
                 if path.suffix.lower() == '.txt':
                     loader = TextLoader(file_path)
@@ -109,17 +113,17 @@ class DocumentProcessor:
                 else:
                     console.print(f"[yellow]不支持的文件类型: {path.suffix}[/yellow]")
                     continue
-                
+
                 console.print(f"[green]成功加载文档 {path.name}, 包含 {len(docs)} 页/部分[/green]")
                 loaded_docs.extend(docs)
-                
+
             except Exception as e:
                 console.print(f"[red]加载文档出错 {file_path}: {str(e)}[/red]")
-        
+
         # 更新文档列表
         self.documents.extend(loaded_docs)
         return len(loaded_docs)
-    
+
     def add_text(self, text: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """直接添加文本内容
         
@@ -130,7 +134,7 @@ class DocumentProcessor:
         doc = Document(page_content=text, metadata=metadata or {})
         self.documents.append(doc)
         console.print(f"[green]成功添加文本文档，长度: {len(text)} 字符[/green]")
-    
+
     def process_documents(self, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Document]:
         """处理并分割文档
         
@@ -144,7 +148,7 @@ class DocumentProcessor:
         if not self.documents:
             console.print("[yellow]警告：没有文档可供处理[/yellow]")
             return []
-        
+
         # 分割文档为较小的块
         text_splitter = CharacterTextSplitter(
             separator="\n\n",
@@ -152,13 +156,13 @@ class DocumentProcessor:
             chunk_overlap=chunk_overlap,
             length_function=len
         )
-        
+
         splits = text_splitter.split_documents(self.documents)
         console.print(f"[green]文档已被分割为 {len(splits)} 个块[/green]")
         return splits
-    
-    def create_vector_db(self, 
-                         document_chunks: List[Document], 
+
+    def create_vector_db(self,
+                         document_chunks: List[Document],
                          db_type: str = "faiss",
                          persist_directory: Optional[str] = None) -> VectorStore:
         """创建向量数据库
@@ -172,7 +176,7 @@ class DocumentProcessor:
             创建的向量数据库
         """
         start_time = time.time()
-        
+
         if db_type == "faiss":
             vector_db = FAISS.from_documents(
                 documents=document_chunks,
@@ -196,15 +200,16 @@ class DocumentProcessor:
                 console.print("[green]已创建Chroma向量数据库（内存模式）[/green]")
         else:
             raise ValueError(f"不支持的向量数据库类型: {db_type}")
-        
+
         end_time = time.time()
         console.print(f"[green]向量化耗时: {end_time - start_time:.2f} 秒[/green]")
-        
+
         return vector_db
+
 
 class RAGChatbot:
     """基于检索增强生成（RAG）的聊天机器人"""
-    
+
     def __init__(self, vector_store: VectorStore, model_name: str = "openai", temperature: float = 0.7):
         """初始化RAG聊天机器人
         
@@ -219,13 +224,13 @@ class RAGChatbot:
         self.retriever = vector_store.as_retriever(
             search_kwargs={"k": 5}  # 每次检索5个最相关的文档块
         )
-        
+
         # 设置聊天模型
         self.setup_chat_model(model_name)
-        
+
         # 创建RAG链
         self.setup_rag_chain()
-    
+
     def setup_chat_model(self, model_name: str):
         """设置聊天模型
         
@@ -259,9 +264,9 @@ class RAGChatbot:
             self.chat_model = ChatDashscope(temperature=self.temperature)
         else:
             raise ValueError(f"不支持的聊天模型: {model_name}")
-        
+
         console.print(f"[green]已加载{model_name}聊天模型[/green]")
-    
+
     def setup_rag_chain(self):
         """设置RAG检索增强生成链"""
         # 创建带上下文的提示模板
@@ -277,23 +282,24 @@ class RAGChatbot:
 
 用户问题: {question}
 """
-        
+
         prompt = ChatPromptTemplate.from_template(template)
-        
+
         # 定义格式化上下文的函数
         def format_docs(docs):
             return "\n\n".join(doc.page_content for doc in docs)
-        
+
         # 构建RAG链
         self.rag_chain = (
-            {"context": self.retriever | format_docs, 
-             "chat_history": lambda x: "\n".join([f"{m.type}: {m.content}" for m in self.chat_history[-6:]]) if self.chat_history else "",
-             "question": RunnablePassthrough()}
-            | prompt
-            | self.chat_model
-            | StrOutputParser()
+                {"context": self.retriever | format_docs,
+                 "chat_history": lambda x: "\n".join(
+                     [f"{m.type}: {m.content}" for m in self.chat_history[-6:]]) if self.chat_history else "",
+                 "question": RunnablePassthrough()}
+                | prompt
+                | self.chat_model
+                | StrOutputParser()
         )
-    
+
     def chat(self, user_message: str) -> str:
         """处理用户消息并返回基于检索的回复
         
@@ -306,27 +312,27 @@ class RAGChatbot:
         try:
             # 添加用户消息到历史
             self.chat_history.append(HumanMessage(content=user_message))
-            
+
             # 调用RAG链获取回答
             start_time = time.time()
             response = self.rag_chain.invoke(user_message)
             end_time = time.time()
-            
+
             # 添加助手回复到历史
             self.chat_history.append(AIMessage(content=response))
-            
+
             # 如果历史太长，只保留最近的轮次
             if len(self.chat_history) > 10:
                 self.chat_history = self.chat_history[-10:]
-                
+
             console.print(f"[green]回答生成耗时: {end_time - start_time:.2f} 秒[/green]")
             return response
-            
+
         except Exception as e:
             error_msg = f"处理消息时出错: {str(e)}"
             console.print(f"[red]{error_msg}[/red]")
             return error_msg
-    
+
     def search_docs(self, query: str, top_k: int = 3) -> List[Document]:
         """直接搜索相关文档
         
@@ -338,11 +344,12 @@ class RAGChatbot:
             相关文档列表
         """
         return self.retriever.get_relevant_documents(query)
-    
+
     def clear_history(self) -> None:
         """清除聊天历史"""
         self.chat_history = []
         console.print("[yellow]已清除聊天历史[/yellow]")
+
 
 def create_sample_docs():
     """创建示例文档用于演示"""
@@ -350,7 +357,7 @@ def create_sample_docs():
     with tempfile.TemporaryDirectory() as temp_dir:
         # 创建示例文件
         files = []
-        
+
         # 样例1：人工智能介绍
         ai_intro_path = os.path.join(temp_dir, "ai_introduction.txt")
         with open(ai_intro_path, "w", encoding="utf-8") as f:
@@ -385,7 +392,7 @@ AI发展史:
 - 与人类协作方式
             """)
         files.append(ai_intro_path)
-        
+
         # 样例2：机器学习详解
         ml_path = os.path.join(temp_dir, "machine_learning.txt")
         with open(ml_path, "w", encoding="utf-8") as f:
@@ -431,7 +438,7 @@ AI发展史:
 - 考虑模型的可解释性和透明度
             """)
         files.append(ml_path)
-        
+
         # 样例3：语言模型概述
         llm_path = os.path.join(temp_dir, "language_models.txt")
         with open(llm_path, "w", encoding="utf-8") as f:
@@ -481,68 +488,69 @@ AI发展史:
 - 计算资源需求：训练和运行需要大量计算资源
             """)
         files.append(llm_path)
-        
+
         return files
+
 
 async def main():
     """主函数"""
     console.print("[bold green]LangChain RAG聊天机器人演示[/bold green]")
     console.print("本示例展示如何构建基于文档检索的智能问答系统\\n")
-    
+
     try:
         # 确保有API密钥
         if not os.environ.get("OPENAI_API_KEY"):
             console.print("[yellow]警告: 未设置OPENAI_API_KEY环境变量，请先设置再运行[/yellow]")
             console.print("可以通过设置环境变量来添加API密钥: export OPENAI_API_KEY=your_key_here")
             return
-        
+
         # 创建示例文档
         console.print("[cyan]创建示例文档...[/cyan]")
         file_paths = create_sample_docs()
-        
+
         # 初始化文档处理器
         console.print("[cyan]初始化文档处理器...[/cyan]")
         processor = DocumentProcessor(embedding_model="openai")
-        
+
         # 加载文档
         console.print("[cyan]加载文档...[/cyan]")
         processor.load_documents(file_paths)
-        
+
         # 处理文档
         console.print("[cyan]处理和分割文档...[/cyan]")
         chunks = processor.process_documents(chunk_size=500, chunk_overlap=50)
-        
+
         # 创建向量数据库
         console.print("[cyan]创建向量数据库...[/cyan]")
         vector_db = processor.create_vector_db(chunks, db_type="faiss")
-        
+
         # 创建RAG聊天机器人
         console.print("[cyan]初始化RAG聊天机器人...[/cyan]")
         chatbot = RAGChatbot(vector_db, model_name="openai", temperature=0.7)
-        
+
         # 开始交互式聊天
         console.print("[bold green]聊天机器人已准备就绪! 输入'quit'或'exit'退出对话。输入'clear'可清除聊天历史。[/bold green]")
-        
+
         # 聊天循环
         while True:
             # 获取用户输入
             user_input = input("\n[你] ")
-            
+
             # 检查是否退出
             if user_input.lower() in ["quit", "exit"]:
                 console.print("[yellow]结束对话[/yellow]")
                 break
-            
+
             # 检查是否清除历史
             if user_input.lower() == "clear":
                 chatbot.clear_history()
                 continue
-            
+
             # 检查是否为文档搜索
             if user_input.lower().startswith("search:"):
                 query = user_input[7:].strip()
                 docs = chatbot.search_docs(query)
-                
+
                 console.print("\n[bold cyan]找到相关文档片段:[/bold cyan]")
                 for i, doc in enumerate(docs, 1):
                     console.print(Panel(
@@ -551,19 +559,20 @@ async def main():
                         border_style="green"
                     ))
                 continue
-            
+
             # 处理常规问题
             console.print("[cyan]思考中...[/cyan]")
             response = chatbot.chat(user_input)
-            
+
             # 显示回答
             console.print("\n[bold blue][AI][/bold blue]")
             console.print(Markdown(response))
-            
+
     except KeyboardInterrupt:
         console.print("\n[yellow]程序被用户中断[/yellow]")
     except Exception as e:
         console.print(f"\n[red]发生错误: {str(e)}[/red]")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
