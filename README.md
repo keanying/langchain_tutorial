@@ -6,7 +6,7 @@
 
 ## 资源导航
 
-请查看 [资源索引](documentation/index.md) 获取完整的资源列表和导航。
+请查看 [资源索引](langchain_tutorial/documentation/index.md) 获取完整的资源列表和导航。
 
 ## 主要内容
 
@@ -19,6 +19,6 @@
 
 ## 使用方法
 
-1. 浏览 [完整指南](documentation/langchain_complete_guide.md) 获取 LangChain 框架的全面介绍
-2. 参考 [代码示例](code_examples/) 了解实际实现方法
+1. 浏览 [完整指南](langchain_tutorial/documentation/langchain_complete_guide.md) 获取 LangChain 框架的全面介绍
+2. 参考 [代码示例](langchain_tutorial/code_examples/) 了解实际实现方法
 3. 查阅特定主题的详细文档深入学习
