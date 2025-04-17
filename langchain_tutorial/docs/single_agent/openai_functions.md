@@ -17,7 +17,7 @@ OpenAI函数智能体的工作原理如下：
 5. **工具执行**：执行被调用的函数并获取结果
 6. **结果处理**：将函数执行结果返回给模型进行下一步决策或最终回答生成
 
-![OpenAI函数智能体工作流程](https://python.langchain.com/assets/images/openai_functions-a02053e685f6b2a0fecb4b7ee5179e8f.jpg)
+![OpenAI函数智能体工作流程](C:\Users\TochLink-PC\Desktop\langchain_tutorial\langchain_tutorial\docs\single_agent\img_1.png)
 
 ## 优势
 

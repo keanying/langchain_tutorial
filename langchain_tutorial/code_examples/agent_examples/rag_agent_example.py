@@ -1,21 +1,24 @@
 # LangChain RAG与智能体结合示例
 
 import os
-from typing import List, Dict, Any
+from typing import List
 from langchain.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.agents import AgentType, initialize_agent, Tool
-from langchain.chat_models import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain.agents import  Tool
+from langchain_openai import ChatOpenAI
 from langchain_experimental.tools.python.tool import PythonREPLTool
 from langchain.prompts import PromptTemplate
 from langchain.schema.runnable import RunnablePassthrough
 import tempfile
-
+from langchain_core.tools import tool
 
 # 确保设置环境变量
-# os.environ["OPENAI_API_KEY"] = "your-api-key"
+os.environ["OPENAI_API_KEY"] = "sk-"
+os.environ["OPENAI_BASE_URL"] = "https://aigptx.top/v1/"
+
 
 class RAGAgentExample:
     """
@@ -24,7 +27,7 @@ class RAGAgentExample:
     """
 
     def __init__(self):
-        self.llm = ChatOpenAI(temperature=0)
+        self.llm = ChatOpenAI(temperature=1, max_tokens=2000, model='gpt-3.5-turbo-0125')
         self.documents = []
         self.vector_store = None
         self.retriever = None
@@ -46,7 +49,7 @@ class RAGAgentExample:
 
         # 加载文档
         for file_path in file_paths:
-            loader = TextLoader(file_path)
+            loader = TextLoader(file_path, encoding='utf-8')
             self.documents.extend(loader.load())
 
         print(f"已加载 {len(self.documents)} 个文档")
@@ -102,6 +105,7 @@ class RAGAgentExample:
 
         return rag_chain
 
+    @tool(description="将RAG系统封装为智能体工具")
     def create_rag_tool(self):
         """将RAG系统封装为智能体工具"""
         rag_chain = self.create_standalone_rag_chain()
@@ -120,24 +124,15 @@ class RAGAgentExample:
 
         return rag_tool
 
+    @tool(description="执行自定义REPL操作，处理自然语言指令并返回结果")
+    def repl_tool(self):
+        return PythonREPLTool()
+
     def create_agent_with_rag(self):
         """创建集成RAG的智能体"""
-        # 获取RAG工具
-        rag_tool = self.create_rag_tool()
-
-        # 添加其他工具
-        python_tool = PythonREPLTool()
-
-        # 创建智能体
-        agent = initialize_agent(
-            tools=[rag_tool, python_tool],
-            llm=self.llm,
-            agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION,
-            verbose=True,
-            handle_parsing_errors=True
-        )
-
-        return agent
+        tools = [self.create_rag_tool, self.repl_tool]
+        langgraph_agent_executor = create_react_agent(model=self.llm, tools=tools)
+        return langgraph_agent_executor
 
 
 # 使用示例
@@ -205,5 +200,6 @@ if __name__ == "__main__":
 
     for query in agent_queries:
         print(f"\n智能体查询: {query}")
-        response = agent.run(query)
+        response = agent.invoke({"messages": [("human", query)]})
+        # response = agent.invoke({"input": query, "chat_history": []})
         print(f"智能体回答: {response}")

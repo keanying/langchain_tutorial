@@ -6,20 +6,20 @@ from langchain.agents import AgentType, initialize_agent, Tool
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-from langchain.memory import ConversationBufferMemory
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_experimental.tools.python.tool import PythonREPLTool
 
-
 # 确保设置环境变量
-# os.environ["OPENAI_API_KEY"] = "your-api-key"
+os.environ["OPENAI_API_KEY"] = "sk-"
+os.environ["OPENAI_BASE_URL"] = "https://aigptx.top/v1/"
+
 
 # 1. 团队监督者模式 (Team Supervisor)
 class TeamSupervisorSystem:
     """团队监督者模式 - 一个监督者智能体协调多个专家智能体"""
 
     def __init__(self):
-        self.llm = ChatOpenAI(temperature=0)
+        self.llm = ChatOpenAI(temperature=1, max_tokens=1024, model='gpt-3.5-turbo-0125')
 
         # 创建专家智能体
         self.researcher = self._create_researcher_agent()
@@ -91,12 +91,12 @@ class TeamSupervisorSystem:
         # 2. 研究员收集信息
         print("\n2. 研究员收集信息")
         research_query = f"请查询关于以下内容的事实性信息: {task}"
-        research_result = self.researcher.run(research_query)
+        research_result = self.researcher.invoke({"input": research_query, "chat_history": []})
         print(f"\n研究结果:\n{research_result}")
 
         # 3. 编码员根据研究结果实现解决方案
         print("\n3. 编码员实现解决方案")
-        coding_task = f"根据以下研究结果，编写Python代码解决问题: {task}\n\n研究信息: {research_result}"
+        coding_task = f"根据以下研究结果，编写HTML代码解决问题: {task}\n\n研究信息: {research_result}"
         code_solution = self.coder.run(coding_task)
         print(f"\n代码解决方案:\n{code_solution}")
 
@@ -194,7 +194,7 @@ if __name__ == "__main__":
 
     if orchestration_type == "team_supervisor":
         system = TeamSupervisorSystem()
-        result = system.run("创建一个简单的网站访问计数器应用")
+        result = system.run("创建一个简单的网站访问计数器应用，使用HTML实现即可")
 
     elif orchestration_type == "plan_executor":
         system = PlanExecutorSystem()

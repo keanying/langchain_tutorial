@@ -15,7 +15,7 @@
 5. **迭代或完成**：智能体可能决定执行更多操作或返回最终答案
 6. **输出结果**：将智能体的最终回答返回给用户
 
-![智能体执行器工作流程](https://python.langchain.com/assets/images/agent_executor-8ec01976e6a5a9f5679286453dbed53c.jpg)
+![智能体执行器工作流程](https://egoalpha.com/assets/chat_agent_ex.4a1d980b.png)
 
 ## 主要特性
 
